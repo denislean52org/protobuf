@@ -1396,6 +1396,34 @@ T* DynamicCastToGenerated(Message* from) {
   return const_cast<T*>(DynamicCastToGenerated<T>(message_const));
 }
 
+template <typename T>
+const T* DownCastToGenerated(const Message* from) {
+  // Compile-time assert that T is a generated type that has a
+  // default_instance() accessor, but avoid actually calling it.
+  const T& (*get_default_instance)() = &T::default_instance;
+  (void)get_default_instance;
+
+  // Compile-time assert that T is a subclass of google::protobuf::Message.
+  const Message* unused = static_cast<T*>(nullptr);
+  (void)unused;
+
+  // TODO: Add the pinning logic after submitting the
+  // weak-reflection change.
+
+  // Check whether the destination type `T` is derived from google::protobuf::Message. If
+  // it is not a derived type, return nullptr. Otherwise it is safe to use
+  // static_cast for downcasting.
+  bool ok =
+      std::is_base_of<Message, typename std::remove_pointer<T>::type>::value;
+  return ok ? static_cast<const T*>(from) : nullptr;
+}
+
+template <typename T>
+T* DownCastToGenerated(Message* from) {
+  const Message* message_const = from;
+  return const_cast<T*>(DownCastToGenerated<T>(message_const));
+}
+
 // Call this function to ensure that this message's reflection is linked into
 // the binary:
 //
